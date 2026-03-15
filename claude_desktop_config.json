@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "adobe_mcp": {
+      "command": "python",
+      "args": ["C:\\\\path\\\\to\\\\adobe-mcp\\\\adobe_mcp.py"],
+      "env": {}
+    }
+  }
+}
