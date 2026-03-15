@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Full Adobe Creative Cloud automation for Claude via MCP — 45 tools for Photoshop, Illustrator, Premiere Pro, After Effects, InDesign, Animate & more",
   "bin": {
-    "adobe-mcp": "./bin/adobe-mcp.js"
+    "adobe-mcp": "bin/adobe-mcp.js"
   },
   "keywords": [
     "mcp",
@@ -20,7 +20,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/VoidChecksum/adobe-mcp"
+    "url": "git+https://github.com/VoidChecksum/adobe-mcp.git"
   },
   "engines": {
     "node": ">=16"
