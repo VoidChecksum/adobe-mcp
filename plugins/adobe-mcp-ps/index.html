@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Adobe MCP — Photoshop</title>
+    <style>
+        /* ── Base ──────────────────────────────────────────────── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #232323;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        /* ── Status Bar ───────────────────────────────────────── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+            margin-bottom: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-dot.connected    { background: #4caf50; }
+        .status-dot.disconnected { background: #f44336; }
+        .status-dot.executing    { background: #ff9800; animation: pulse 0.8s ease-in-out infinite; }
+        .status-dot.connecting   { background: #ffeb3b; animation: pulse 1.2s ease-in-out infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .status {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status.connected    { color: #4caf50; }
+        .status.disconnected { color: #f44336; }
+        .status.executing    { color: #ff9800; }
+        .status.connecting   { color: #ffeb3b; }
+
+        /* ── App Label ────────────────────────────────────────── */
+        .app-label {
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        /* ── Last Operation ───────────────────────────────────── */
+        .last-op-section {
+            margin-bottom: 6px;
+        }
+
+        .last-op-label {
+            color: #888;
+            font-size: 10px;
+            margin-bottom: 2px;
+        }
+
+        #last-operation {
+            color: #b0b0b0;
+            font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── Operation Log ────────────────────────────────────── */
+        .log-section {
+            margin-top: 4px;
+        }
+
+        .log-label {
+            color: #888;
+            font-size: 10px;
+            margin-bottom: 2px;
+            border-top: 1px solid #333;
+            padding-top: 4px;
+        }
+
+        #operation-log {
+            max-height: 100px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+            font-size: 10px;
+        }
+
+        /* Scrollbar styling for dark theme */
+        #operation-log::-webkit-scrollbar {
+            width: 4px;
+        }
+        #operation-log::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        #operation-log::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 2px;
+        }
+
+        .log-entry {
+            padding: 1px 0;
+            border-bottom: 1px solid #2a2a2a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .log-time {
+            color: #666;
+            margin-right: 4px;
+        }
+
+        .log-msg {
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-label">Photoshop</div>
+
+    <!-- Status bar with connection indicator -->
+    <div class="status-bar">
+        <div id="relay-status-dot" class="status-dot disconnected"></div>
+        <div id="relay-status" class="status disconnected">MCP Relay: disconnected</div>
+    </div>
+
+    <!-- Last operation display -->
+    <div class="last-op-section">
+        <div class="last-op-label">Last Operation</div>
+        <div id="last-operation">No operations yet</div>
+    </div>
+
+    <!-- Scrollable operation log -->
+    <div class="log-section">
+        <div class="log-label">Operation Log</div>
+        <div id="operation-log"></div>
+    </div>
+
+    <!-- Load CSInterface stub and relay client from shared directory -->
+    <script src="../shared/js/CSInterface.js"></script>
+    <script src="../shared/js/relay-client.js"></script>
+    <script>
+        // Initialize relay client for Photoshop
+        RelayClient.init("photoshop");
+    </script>
+</body>
+</html>
