@@ -232,3 +232,160 @@ class AiStyleTransferInput(BaseModel):
     source_name: Optional[str] = Field(default=None, description="Source pathItem name to extract style from (for transfer/extract)")
     target_names: Optional[str] = Field(default=None, description="Comma-separated target pathItem names (for transfer/apply)")
     style_json: Optional[str] = Field(default=None, description="JSON style spec for apply action")
+
+
+class AiContourToPathInput(BaseModel):
+    """Create an Illustrator path from an analyze_reference shape manifest entry."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    shape_json: str = Field(..., description="JSON object of a single shape from analyze_reference manifest (with approx_points, center, etc.)")
+    image_size: Optional[str] = Field(default=None, description="JSON [width, height] of the source image for coordinate transform")
+    path_name: str = Field(default="shape", description="Name for the created path")
+    layer_name: str = Field(default="Drawing", description="Target layer")
+    closed: bool = Field(default=True, description="Close the path")
+    stroke_width: float = Field(default=2.0, description="Stroke width", ge=0.1)
+    smooth: bool = Field(default=False, description="Auto-smooth corners to curves after placement")
+
+
+class AiBezierOptimizeInput(BaseModel):
+    """Smooth a jagged polygon path into clean bezier curves while preserving shape fidelity."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Target pathItem name")
+    index: Optional[int] = Field(default=None, description="Target pathItem index (0-based)")
+    smoothness: float = Field(default=50, description="Smoothness 0-100 (0=keep corners, 100=maximum smoothing)", ge=0, le=100)
+    preserve_corners: bool = Field(default=True, description="Keep sharp corners sharp (angle threshold)")
+    corner_angle: float = Field(default=60, description="Angle below which a point is considered a corner (degrees)", ge=0, le=180)
+
+
+class AiPathBooleanInput(BaseModel):
+    """Pathfinder boolean operations — unite, subtract, intersect, divide paths."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    operation: str = Field(..., description="Operation: unite, minus_front, minus_back, intersect, exclude, divide")
+    front_name: Optional[str] = Field(default=None, description="Front pathItem name")
+    back_name: Optional[str] = Field(default=None, description="Back pathItem name")
+    result_name: str = Field(default="boolean_result", description="Name for the resulting path")
+
+
+class AiSmartShapeInput(BaseModel):
+    """Create a shape from high-level description — type, center, dimensions, rotation."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    shape_type: str = Field(..., description="Shape: hexagon, pentagon, triangle, rectangle, ellipse, star, polygon")
+    center_x: float = Field(..., description="Center X position in AI coordinates")
+    center_y: float = Field(..., description="Center Y position in AI coordinates")
+    width: float = Field(..., description="Width in points")
+    height: float = Field(..., description="Height in points")
+    rotation: float = Field(default=0, description="Rotation in degrees (positive = counterclockwise)")
+    sides: int = Field(default=6, description="Number of sides for polygon shapes", ge=3, le=36)
+    name: str = Field(default="smart_shape", description="Name for the created shape")
+    layer_name: str = Field(default="Drawing", description="Target layer")
+    stroke_width: float = Field(default=2.0, description="Stroke width", ge=0.1)
+
+
+class AiArtboardFromRefInput(BaseModel):
+    """Create or resize artboard to match reference image aspect ratio."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    image_path: str = Field(..., description="Absolute path to reference image")
+    target_width: float = Field(default=800, description="Target artboard width in points", ge=72)
+    margin: float = Field(default=0, description="Margin around the image area in points", ge=0)
+
+
+class AiCurveFitInput(BaseModel):
+    """Fit smooth cubic bezier curves through a path's anchor points using least-squares optimization."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Target pathItem name")
+    index: Optional[int] = Field(default=None, description="Target pathItem index (0-based)")
+    error_threshold: float = Field(default=2.0, description="Max allowed deviation from original points in pts", ge=0.1, le=50)
+    max_segments: Optional[int] = Field(default=None, description="Max bezier segments (None=auto)")
+
+
+class AiLayerAutoOrganizeInput(BaseModel):
+    """Auto-sort paths into named layers based on spatial position and decomposition hierarchy."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    source_layer: str = Field(default="Drawing", description="Layer containing paths to organize")
+    strategy: str = Field(default="spatial", description="Strategy: spatial (by Y position), hierarchy (by containment), manifest (from shape manifest)")
+    shape_manifest: Optional[str] = Field(default=None, description="JSON shape manifest with decomposition for manifest strategy")
+    prefix: str = Field(default="", description="Prefix for created layer names")
+
+
+class AiSymmetryInput(BaseModel):
+    """Mirror/reflect a path across an axis."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Source pathItem name to mirror")
+    index: Optional[int] = Field(default=None, description="Source pathItem index (0-based)")
+    axis: str = Field(default="vertical", description="Mirror axis: vertical (left-right), horizontal (top-bottom)")
+    axis_position: Optional[float] = Field(default=None, description="Axis position in pts (None=center of artboard)")
+    duplicate: bool = Field(default=True, description="Create a mirrored copy (True) or mirror in place (False)")
+    mirror_name: str = Field(default="", description="Name for the mirrored copy (auto-generated if empty)")
+
+
+class AiColorSamplerInput(BaseModel):
+    """Sample RGB color values from a reference image at specific positions."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    image_path: str = Field(..., description="Absolute path to reference image")
+    positions: str = Field(..., description="JSON array of [x,y] pixel positions to sample, or 'grid' for auto-grid sampling")
+    radius: int = Field(default=3, description="Averaging radius around each sample point in pixels", ge=0, le=20)
+
+
+class AiStrokeProfileInput(BaseModel):
+    """Apply variable-width stroke profiles to paths for expressive line art."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Target pathItem name")
+    index: Optional[int] = Field(default=None, description="Target pathItem index (0-based)")
+    profile: str = Field(default="taper", description="Profile: taper (thick→thin), swell (thin→thick→thin), pressure (variable), uniform")
+    min_width: float = Field(default=0.5, description="Minimum stroke width in points", ge=0.1)
+    max_width: float = Field(default=4.0, description="Maximum stroke width in points", ge=0.1)
+
+
+class AiPathOffsetInput(BaseModel):
+    """Create offset/parallel path at a specified distance."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Source pathItem name")
+    index: Optional[int] = Field(default=None, description="Source pathItem index (0-based)")
+    offset: float = Field(..., description="Offset distance in points (positive=outward, negative=inward)")
+    joins: str = Field(default="miter", description="Join style: miter, round, bevel")
+    result_name: str = Field(default="offset_path", description="Name for the offset path")
+
+
+class AiGroupAndNameInput(BaseModel):
+    """Auto-group paths by spatial proximity and name groups by body region."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    source_layer: str = Field(default="Drawing", description="Layer containing paths to group")
+    proximity_threshold: float = Field(default=50, description="Max distance between path centers to group together (points)", ge=1)
+    shape_manifest: Optional[str] = Field(default=None, description="JSON shape manifest for informed naming")
+
+
+class AiPathWeldInput(BaseModel):
+    """Join adjacent path endpoints into continuous paths."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    names: Optional[str] = Field(default=None, description="Comma-separated pathItem names to consider for welding")
+    layer_name: str = Field(default="Drawing", description="Layer to search for paths")
+    tolerance: float = Field(default=5.0, description="Max distance between endpoints to weld (points)", ge=0.1)
+    result_name: str = Field(default="welded_path", description="Name for welded result")
+
+
+class AiSnapToGridInput(BaseModel):
+    """Snap anchor points to the nearest proportion grid positions."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: Optional[str] = Field(default=None, description="Target pathItem name (None=all on layer)")
+    layer_name: str = Field(default="Drawing", description="Layer to process")
+    snap_distance: float = Field(default=5.0, description="Max distance to snap (points)", ge=0.5, le=50)
+    grid_spacing: Optional[float] = Field(default=None, description="Grid spacing in points (None=use proportion grid positions)")
+
+
+class AiUndoCheckpointInput(BaseModel):
+    """Save or restore named snapshots of the drawing state."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(..., description="Action: save, restore, list, delete")
+    checkpoint_name: str = Field(default="auto", description="Name for the checkpoint")
+    layer_name: str = Field(default="Drawing", description="Layer to snapshot/restore")
+
+
+class AiReferenceCropInput(BaseModel):
+    """Crop and re-analyze a specific region of the reference image at higher detail."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    image_path: str = Field(..., description="Absolute path to reference image")
+    x: int = Field(..., description="Crop region left X in pixels")
+    y: int = Field(..., description="Crop region top Y in pixels")
+    width: int = Field(..., description="Crop region width in pixels", ge=10)
+    height: int = Field(..., description="Crop region height in pixels", ge=10)
+    min_area_pct: float = Field(default=0.3, description="Min contour area % (lower for detail regions)", ge=0.01)
+    save_crop: bool = Field(default=True, description="Save cropped image for reference")
