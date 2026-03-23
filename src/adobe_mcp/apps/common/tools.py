@@ -1,4 +1,4 @@
-"""Cross-app tools — 12 tools that work across all Adobe applications."""
+"""Cross-app tools — 13 tools that work across all Adobe applications."""
 
 import json
 import subprocess
@@ -22,6 +22,7 @@ from adobe_mcp.apps.common.models import (
     OpenFileInput,
     PipelineInput,
     PreviewInput,
+    RelayStatusInput,
     RunJSXFileInput,
     RunJSXInput,
     RunPowerShellInput,
@@ -38,7 +39,7 @@ from adobe_mcp.jsx.snippets import SNIPPETS, get_snippet, search_snippets, list_
 
 
 def register_common_tools(mcp):
-    """Register 12 cross-app tools."""
+    """Register 13 cross-app tools (including relay status)."""
 
     @mcp.tool(
         name="adobe_list_apps",
@@ -1329,4 +1330,118 @@ if (comp && comp instanceof CompItem) {{
         if state_line:
             lines.append("---")
             lines.append(state_line)
+        return "\n".join(lines)
+
+    # ── Relay Status Tool ──────────────────────────────────────────────
+
+    @mcp.tool(
+        name="adobe_relay_status",
+        annotations={"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False},
+    )
+    async def adobe_relay_status(params: RelayStatusInput) -> str:
+        """Check the status of the WebSocket relay server and connected CEP panels.
+
+        Returns which Adobe apps are connected via WebSocket, heartbeat freshness
+        per app, operation cache statistics, and recording buffer count.
+
+        Use this to verify that CEP panels are connected before running tool calls
+        that benefit from the persistent WebSocket path (lower latency, no timeouts).
+        """
+        import time as _time
+
+        # Access the relay singleton from the engine module
+        try:
+            from adobe_mcp.engine import get_relay
+            relay = get_relay()
+        except ImportError:
+            relay = None
+
+        # Access the operation cache
+        try:
+            from adobe_mcp.relay.cache import OperationCache
+            cache = OperationCache()
+        except ImportError:
+            cache = None
+
+        lines = ["=== RELAY STATUS ==="]
+
+        if relay is None:
+            lines.append("Relay: not initialized (engine.set_relay() not called)")
+            lines.append("All tool calls use osascript/PowerShell fallback path.")
+            return "\n".join(lines)
+
+        # Server status
+        if relay._started:
+            lines.append(f"Server: running on ws://{relay.host}:{relay.port}")
+        else:
+            lines.append("Server: not started")
+            lines.append("Hint: relay starts automatically with 'uv run adobe-mcp'")
+
+        # Connected apps with heartbeat freshness
+        lines.append("")
+        lines.append("=== CONNECTED APPS ===")
+        connected = relay.connected_apps
+        if not connected:
+            lines.append("  (no apps connected)")
+            lines.append("  Install CEP panels: ./scripts/install-cep-panels.sh")
+        else:
+            now = _time.time()
+            for app_name in sorted(connected):
+                last_beat = relay._last_heartbeat.get(app_name, 0)
+                freshness = now - last_beat
+                if freshness < 10:
+                    status = "fresh"
+                elif freshness < 15:
+                    status = "aging"
+                else:
+                    status = "stale"
+                lines.append(f"  {app_name}: connected ({status}, {freshness:.1f}s since heartbeat)")
+
+        # Apps registered but possibly stale
+        all_registered = list(relay._connections.keys())
+        stale = [a for a in all_registered if a not in connected]
+        if stale:
+            lines.append("")
+            lines.append("Stale connections (no recent heartbeat):")
+            for app_name in stale:
+                lines.append(f"  {app_name}: stale")
+
+        # Pending requests
+        pending_count = len(relay._pending)
+        if pending_count > 0:
+            lines.append(f"\nPending JSX requests: {pending_count}")
+
+        # Recording buffer
+        recording_count = len(relay._recording)
+        lines.append(f"\nRecording buffer: {recording_count} entries")
+
+        # Cache statistics
+        lines.append("")
+        lines.append("=== CACHE ===")
+        if cache is not None:
+            ops_file = cache._ops_file
+            if ops_file.exists():
+                # Count lines in the JSONL file for total operation count
+                try:
+                    with open(ops_file, "r", encoding="utf-8") as f:
+                        op_count = sum(1 for line in f if line.strip())
+                    file_size = ops_file.stat().st_size
+                    size_label = f"{file_size}" if file_size < 1024 else f"{file_size / 1024:.1f}KB"
+                    lines.append(f"  Operations logged: {op_count}")
+                    lines.append(f"  Cache file: {ops_file} ({size_label})")
+                except OSError:
+                    lines.append("  Operations logged: (read error)")
+            else:
+                lines.append("  Operations logged: 0 (no cache file yet)")
+
+            # Check for snapshots
+            snapshots = list(cache._snapshots_dir.glob("*_latest.json")) if cache._snapshots_dir.exists() else []
+            if snapshots:
+                snap_names = [s.stem.replace("_latest", "") for s in snapshots]
+                lines.append(f"  App snapshots: {', '.join(snap_names)}")
+            else:
+                lines.append("  App snapshots: none")
+        else:
+            lines.append("  Cache module not available")
+
         return "\n".join(lines)

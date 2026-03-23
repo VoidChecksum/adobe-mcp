@@ -286,6 +286,12 @@ class PipelineInput(BaseModel):
     )
 
 
+class RelayStatusInput(BaseModel):
+    """Check the status of the WebSocket relay server and connected CEP panels."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    # No required fields — returns full status overview by default
+
+
 class SessionStateInput(BaseModel):
     """Query or reset server-side session state."""
     model_config = ConfigDict(str_strip_whitespace=True)
