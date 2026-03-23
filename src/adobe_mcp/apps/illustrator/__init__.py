@@ -1,7 +1,7 @@
-"""Illustrator tools — 35 tools split by feature.
+"""Illustrator tools — 49 tools split by feature.
 
 Registration chain:
-    apps/__init__.py -> illustrator/__init__.py -> {new_document, shapes, text, paths, export, layers, modify, inspect, image_trace, analyze_reference, reference_underlay, vtrace, anchor_edit, silhouette, auto_correct, proportion_grid, style_transfer, shape_recipes, contour_to_path, smart_shape, bezier_optimize, curve_fit, artboard_from_ref, path_boolean, symmetry, layer_auto_organize, group_and_name, color_sampler, stroke_profiles, path_offset, path_weld, snap_to_grid, undo_checkpoint, reference_crop, drawing_orchestrator}.py
+    apps/__init__.py -> illustrator/__init__.py -> {new_document, shapes, text, paths, export, layers, modify, inspect, image_trace, analyze_reference, reference_underlay, vtrace, anchor_edit, silhouette, auto_correct, proportion_grid, style_transfer, shape_recipes, contour_to_path, smart_shape, bezier_optimize, curve_fit, artboard_from_ref, path_boolean, symmetry, layer_auto_organize, group_and_name, color_sampler, stroke_profiles, path_offset, path_weld, snap_to_grid, undo_checkpoint, reference_crop, drawing_orchestrator, skeleton_annotate, body_part_label, skeleton_build, part_bind, joint_rotate, pose_snapshot, pose_interpolate, ik_solver, onion_skin, character_template, pose_from_image, keyframe_timeline, motion_path, storyboard_panel}.py
 """
 
 from adobe_mcp.apps.illustrator.new_document import register as _reg_new_document
@@ -39,10 +39,24 @@ from adobe_mcp.apps.illustrator.snap_to_grid import register as _reg_snap_to_gri
 from adobe_mcp.apps.illustrator.undo_checkpoint import register as _reg_undo_checkpoint
 from adobe_mcp.apps.illustrator.reference_crop import register as _reg_reference_crop
 from adobe_mcp.apps.illustrator.drawing_orchestrator import register as _reg_drawing_orchestrator
+from adobe_mcp.apps.illustrator.skeleton_annotate import register as _reg_skeleton_annotate
+from adobe_mcp.apps.illustrator.body_part_label import register as _reg_body_part_label
+from adobe_mcp.apps.illustrator.skeleton_build import register as _reg_skeleton_build
+from adobe_mcp.apps.illustrator.part_bind import register as _reg_part_bind
+from adobe_mcp.apps.illustrator.joint_rotate import register as _reg_joint_rotate
+from adobe_mcp.apps.illustrator.pose_snapshot import register as _reg_pose_snapshot
+from adobe_mcp.apps.illustrator.pose_interpolate import register as _reg_pose_interpolate
+from adobe_mcp.apps.illustrator.ik_solver import register as _reg_ik_solver
+from adobe_mcp.apps.illustrator.onion_skin import register as _reg_onion_skin
+from adobe_mcp.apps.illustrator.character_template import register as _reg_character_template
+from adobe_mcp.apps.illustrator.pose_from_image import register as _reg_pose_from_image
+from adobe_mcp.apps.illustrator.keyframe_timeline import register as _reg_keyframe_timeline
+from adobe_mcp.apps.illustrator.motion_path import register as _reg_motion_path
+from adobe_mcp.apps.illustrator.storyboard_panel import register as _reg_storyboard_panel
 
 
 def register_illustrator_tools(mcp):
-    """Register all 35 Illustrator tools."""
+    """Register all 49 Illustrator tools."""
     _reg_new_document(mcp)
     _reg_shapes(mcp)
     _reg_text(mcp)
@@ -78,3 +92,17 @@ def register_illustrator_tools(mcp):
     _reg_undo_checkpoint(mcp)
     _reg_reference_crop(mcp)
     _reg_drawing_orchestrator(mcp)
+    _reg_skeleton_annotate(mcp)
+    _reg_body_part_label(mcp)
+    _reg_skeleton_build(mcp)
+    _reg_part_bind(mcp)
+    _reg_joint_rotate(mcp)
+    _reg_pose_snapshot(mcp)
+    _reg_pose_interpolate(mcp)
+    _reg_ik_solver(mcp)
+    _reg_onion_skin(mcp)
+    _reg_character_template(mcp)
+    _reg_pose_from_image(mcp)
+    _reg_keyframe_timeline(mcp)
+    _reg_motion_path(mcp)
+    _reg_storyboard_panel(mcp)

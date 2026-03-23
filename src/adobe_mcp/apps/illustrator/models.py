@@ -389,3 +389,150 @@ class AiReferenceCropInput(BaseModel):
     height: int = Field(..., description="Crop region height in pixels", ge=10)
     min_area_pct: float = Field(default=0.3, description="Min contour area % (lower for detail regions)", ge=0.01)
     save_crop: bool = Field(default=True, description="Save cropped image for reference")
+
+
+# ── Character Rigging & Posing Models ──────────────────────────
+
+
+class AiSkeletonAnnotateInput(BaseModel):
+    """Mark joint positions on a character for skeleton-based posing."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="add", description="Action: add (mark joint), list (show all joints), remove, clear, auto_detect (estimate joints from contour analysis)")
+    joint_name: Optional[str] = Field(default=None, description="Joint name: head, neck, shoulder_l, shoulder_r, elbow_l, elbow_r, wrist_l, wrist_r, hip_l, hip_r, knee_l, knee_r, ankle_l, ankle_r, spine_top, spine_mid, spine_base")
+    x: Optional[float] = Field(default=None, description="Joint X position in AI coordinates")
+    y: Optional[float] = Field(default=None, description="Joint Y position in AI coordinates")
+    image_path: Optional[str] = Field(default=None, description="Reference image for auto_detect action")
+    character_name: str = Field(default="character", description="Character identifier for multi-character scenes")
+
+
+class AiBodyPartLabelInput(BaseModel):
+    """Assign semantic body part labels to path groups."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="label", description="Action: label (assign label to item/group), auto_label (infer from skeleton positions), list (show current labels)")
+    item_name: Optional[str] = Field(default=None, description="pathItem or group name to label")
+    body_part: Optional[str] = Field(default=None, description="Body part: head, torso, upper_arm_l, upper_arm_r, forearm_l, forearm_r, hand_l, hand_r, upper_leg_l, upper_leg_r, lower_leg_l, lower_leg_r, foot_l, foot_r")
+    character_name: str = Field(default="character", description="Character identifier")
+
+
+class AiSkeletonBuildInput(BaseModel):
+    """Create a connected bone structure from annotated joints."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    character_name: str = Field(default="character", description="Character to build skeleton for")
+    preset: str = Field(default="biped", description="Skeleton preset: biped, quadruped, custom")
+    show_bones: bool = Field(default=True, description="Draw bone visualization on a Skeleton layer")
+    bone_color_r: int = Field(default=0, ge=0, le=255)
+    bone_color_g: int = Field(default=200, ge=0, le=255)
+    bone_color_b: int = Field(default=100, ge=0, le=255)
+
+
+class AiPartBindInput(BaseModel):
+    """Bind path groups to skeleton bones for pose-driven deformation."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="bind", description="Action: bind (associate part to bone), unbind, auto_bind (infer from proximity), list")
+    part_name: Optional[str] = Field(default=None, description="Body part label or group name")
+    bone_name: Optional[str] = Field(default=None, description="Bone name (e.g. upper_arm_l, torso)")
+    character_name: str = Field(default="character", description="Character identifier")
+
+
+class AiJointRotateInput(BaseModel):
+    """Rotate a body part and its children around a joint pivot point."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    joint_name: str = Field(..., description="Joint to rotate around (e.g. shoulder_l, elbow_r, hip_l)")
+    angle: float = Field(..., description="Rotation angle in degrees (positive=counterclockwise)")
+    character_name: str = Field(default="character", description="Character identifier")
+    cascade: bool = Field(default=True, description="Also rotate child joints and their bound parts")
+
+
+class AiPoseSnapshotInput(BaseModel):
+    """Capture or apply a named pose (all joint angles)."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(..., description="Action: capture (save current pose), apply (set pose), list, delete")
+    pose_name: str = Field(default="pose_1", description="Name for the pose")
+    character_name: str = Field(default="character", description="Character identifier")
+
+
+class AiPoseInterpolateInput(BaseModel):
+    """Interpolate between two saved poses to create in-between frames."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    pose_a: str = Field(..., description="Start pose name")
+    pose_b: str = Field(..., description="End pose name")
+    t: float = Field(default=0.5, description="Interpolation factor 0.0-1.0 (0=pose_a, 1=pose_b)", ge=0, le=1)
+    character_name: str = Field(default="character", description="Character identifier")
+    apply: bool = Field(default=True, description="Apply the interpolated pose immediately")
+
+
+class AiIKSolverInput(BaseModel):
+    """Inverse kinematics — move an end effector (hand/foot) and compute joint angles."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    end_effector: str = Field(..., description="End joint to position: wrist_l, wrist_r, ankle_l, ankle_r")
+    target_x: float = Field(..., description="Target X position in AI coordinates")
+    target_y: float = Field(..., description="Target Y position in AI coordinates")
+    character_name: str = Field(default="character", description="Character identifier")
+    apply: bool = Field(default=True, description="Apply the solution immediately")
+
+
+class AiOnionSkinInput(BaseModel):
+    """Show ghost frames of adjacent poses for animation planning."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="show", description="Action: show (create onion skin), clear (remove)")
+    pose_names: Optional[str] = Field(default=None, description="Comma-separated pose names to show as ghosts")
+    opacity_step: float = Field(default=15, description="Opacity decrease per frame from current (0-100)", ge=5, le=50)
+    color_before_r: int = Field(default=100, ge=0, le=255, description="Tint for previous frames (red)")
+    color_before_g: int = Field(default=100, ge=0, le=255)
+    color_before_b: int = Field(default=255, ge=0, le=255)
+    color_after_r: int = Field(default=255, ge=0, le=255, description="Tint for next frames (green)")
+    color_after_g: int = Field(default=100, ge=0, le=255)
+    color_after_b: int = Field(default=100, ge=0, le=255)
+    character_name: str = Field(default="character", description="Character identifier")
+
+
+class AiCharacterTemplateInput(BaseModel):
+    """Save or load a complete posable character (paths + skeleton + bindings)."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(..., description="Action: save, load, list, delete")
+    template_name: str = Field(default="character", description="Template name")
+    character_name: str = Field(default="character", description="Character identifier")
+    template_path: Optional[str] = Field(default=None, description="Custom path for template file (default: ~/.claude/memory/illustration/characters/)")
+
+
+class AiPoseFromImageInput(BaseModel):
+    """Estimate pose joint angles from a reference photo or sketch."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    image_path: str = Field(..., description="Path to reference pose image")
+    character_name: str = Field(default="character", description="Character to apply pose to")
+    apply: bool = Field(default=False, description="Apply extracted pose immediately")
+    method: str = Field(default="contour", description="Method: contour (shape analysis), manual (guided annotation)")
+
+
+class AiKeyframeTimelineInput(BaseModel):
+    """Define animation keyframes at frame numbers with pose data."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(..., description="Action: add_keyframe, remove_keyframe, list, clear, set_fps, set_duration")
+    frame: Optional[int] = Field(default=None, description="Frame number for add/remove", ge=0)
+    pose_name: Optional[str] = Field(default=None, description="Pose name for add_keyframe")
+    fps: Optional[int] = Field(default=None, description="Frames per second for set_fps", ge=1, le=120)
+    duration_frames: Optional[int] = Field(default=None, description="Total duration in frames for set_duration", ge=1)
+    character_name: str = Field(default="character", description="Character identifier")
+    easing: str = Field(default="ease_in_out", description="Easing: linear, ease_in, ease_out, ease_in_out")
+
+
+class AiMotionPathInput(BaseModel):
+    """Define arc-based motion paths for character movement across frames."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="create", description="Action: create, edit, delete, list")
+    path_name: str = Field(default="motion_1", description="Motion path name")
+    points: Optional[str] = Field(default=None, description="JSON array of [x, y, frame] waypoints")
+    character_name: str = Field(default="character", description="Character to move along path")
+    show_path: bool = Field(default=True, description="Visualize the motion path on a Motion layer")
+
+
+class AiStoryboardPanelInput(BaseModel):
+    """Generate storyboard panels with character in specified pose and camera framing."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    action: str = Field(default="create", description="Action: create (new panel), duplicate, reorder, list, export")
+    panel_number: Optional[int] = Field(default=None, description="Panel number (auto-increment if None)")
+    pose_name: Optional[str] = Field(default=None, description="Character pose for this panel")
+    camera: str = Field(default="medium", description="Camera framing: wide, medium, close_up, extreme_close_up, over_shoulder")
+    description: Optional[str] = Field(default=None, description="Action/dialogue description for the panel")
+    duration_frames: int = Field(default=24, description="Panel duration in frames", ge=1)
+    character_name: str = Field(default="character", description="Character identifier")
