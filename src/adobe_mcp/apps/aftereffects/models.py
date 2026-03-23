@@ -72,3 +72,59 @@ class AeEffectInput(BaseModel):
     comp_name: Optional[str] = Field(default=None, description="Composition name")
     layer_name: str = Field(..., description="Layer name or index")
     effect_name: Optional[str] = Field(default=None, description="Effect match name or display name")
+
+
+class AeGenRenderInput(BaseModel):
+    """Generate and render procedural animation in After Effects.
+
+    Creates a composition, adds a base layer, applies generative expression code
+    to the target property, adds effects (filters), and optionally renders to file.
+    Supports seamless looping via loopOut or time-modulo wrapping.
+    """
+    model_config = ConfigDict(str_strip_whitespace=True)
+    code: str = Field(..., description="Generative expression code (AE expression syntax)")
+    property_target: str = Field(
+        default="position",
+        description="Property to apply expression to: position, scale, rotation, opacity, or custom path like 'Effects.CC Particle World.Birth Rate'",
+    )
+    duration: float = Field(default=5.0, description="Duration in seconds", ge=0.5, le=300)
+    fps: int = Field(default=30, description="Frame rate", ge=12, le=120)
+    width: int = Field(default=1920, description="Composition width", ge=1)
+    height: int = Field(default=1080, description="Composition height", ge=1)
+    comp_name: str = Field(default="GenRender", description="Composition name")
+    bg_color: Optional[list] = Field(
+        default=None,
+        description="Background color [r,g,b] 0-255, default black",
+    )
+    layer_type: str = Field(
+        default="solid",
+        description="Base layer type: solid, shape, or text",
+    )
+    layer_color: Optional[list] = Field(
+        default=None,
+        description="Layer color [r,g,b] 0-255 for solid layers",
+    )
+    filters: Optional[list] = Field(
+        default=None,
+        description="List of effect names to apply: ['Gaussian Blur', 'Glow', 'CC Particle World', etc.]",
+    )
+    filter_params: Optional[dict] = Field(
+        default=None,
+        description="Effect parameters as {effect_name: {param: value}}, e.g. {'Gaussian Blur': {'Blurriness': 20}}",
+    )
+    loop: bool = Field(
+        default=True,
+        description="Make expression seamlessly loopable using loopOut('cycle')",
+    )
+    render: bool = Field(
+        default=False,
+        description="Add to render queue and start render after setup",
+    )
+    output_path: Optional[str] = Field(
+        default=None,
+        description="Output file path (required if render=True)",
+    )
+    output_format: str = Field(
+        default="mp4",
+        description="Output format: mp4, mov, gif",
+    )
