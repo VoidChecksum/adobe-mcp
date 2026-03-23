@@ -55,3 +55,6 @@ npm/server/adobe_mcp/
 
 # Local backup of global Claude config (agents, skills, design DNA)
 .backup/
+
+# Relay operation cache (append-only logs, snapshots)
+.cache/

@@ -1,5 +1,6 @@
 """Adobe application configuration and platform constants."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,14 @@ IS_WINDOWS = sys.platform == "win32"
 # ── Scripts Directory ───────────────────────────────────────────────────
 
 SCRIPTS_DIR = Path(__file__).parent / "scripts"
+
+# ── WebSocket Relay Configuration ───────────────────────────────────────
+# Override via environment variables for non-default setups.
+
+RELAY_HOST = os.environ.get("ADOBE_MCP_RELAY_HOST", "localhost")
+RELAY_PORT = int(os.environ.get("ADOBE_MCP_RELAY_PORT", "8765"))
+RELAY_HEARTBEAT_INTERVAL = 5   # seconds between heartbeats (CEP panel setting)
+RELAY_STALE_THRESHOLD = 15     # seconds without heartbeat = stale (3 missed beats)
 
 # ── Adobe Application Registry ─────────────────────────────────────────
 

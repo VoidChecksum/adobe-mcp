@@ -4,19 +4,85 @@ Also provides the JSX template engine: load_template() reads co-located .jsx fil
 from the calling module's directory and fills {{param}} placeholders. This separates
 ExtendScript from Python — JSX becomes testable in the ExtendScript Toolkit and
 editable by non-Python developers.
+
+Execution priority:
+    1. WebSocket relay (if a CEP panel is connected for the target app)
+    2. osascript / PowerShell subprocess (original path, always available)
+
+The WebSocket path is purely additive — if the relay is unavailable or the
+panel disconnects mid-call, the engine silently falls back to subprocess.
 """
+
+from __future__ import annotations
 
 import asyncio
 import inspect
+import logging
 import os
 import re
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from adobe_mcp.config import ADOBE_APPS, IS_MACOS, IS_WINDOWS
 from adobe_mcp.jsx.templates import escape_jsx_string
+
+if TYPE_CHECKING:
+    from adobe_mcp.relay.server import RelayServer
+
+logger = logging.getLogger("adobe_mcp.engine")
+
+
+# ── WebSocket Relay Integration ─────────────────────────────────────────
+# Module-level relay reference. Set by server.py at startup via set_relay().
+
+_relay: RelayServer | None = None
+
+
+def set_relay(relay: RelayServer) -> None:
+    """Register the WebSocket relay server for use by the execution engine.
+
+    Called once at startup by the server module. After this, _async_run_jsx
+    will attempt the WebSocket path before falling back to subprocess.
+
+    Args:
+        relay: The active RelayServer instance.
+    """
+    global _relay
+    _relay = relay
+
+
+def get_relay() -> RelayServer | None:
+    """Return the current relay server instance, or None if not set."""
+    return _relay
+
+
+async def _run_jsx_websocket(app: str, jsx_code: str, timeout: float = 120) -> dict:
+    """Execute JSX code via the WebSocket relay to a connected CEP panel.
+
+    This path avoids the subprocess + temp file overhead of osascript.
+    The JSX code is sent directly to the panel which runs it via
+    CSInterface.evalScript().
+
+    IMPORTANT: _prepare_jsx() must be called BEFORE this function to ensure
+    polyfills (e.g. JSON for Illustrator) are already injected.
+
+    Args:
+        app: Target Adobe app name.
+        jsx_code: Prepared JSX code (with polyfills already injected).
+        timeout: Maximum seconds to wait for result.
+
+    Returns:
+        Dict matching engine result format: {success, stdout, stderr, returncode}
+
+    Raises:
+        ConnectionError: If no relay connection exists for this app.
+        Exception: Any relay communication error.
+    """
+    if _relay is None:
+        raise ConnectionError("Relay not initialized")
+    return await _relay.execute_jsx(app, jsx_code, timeout=timeout)
 
 
 # ── JSX Template Engine ───────────────────────────────────────────────
@@ -309,7 +375,34 @@ try {{
 # ── Async Wrappers ───────────────────────────────────────────────────
 
 async def _async_run_jsx(app: str, jsx_code: str, timeout: int = 120) -> dict:
-    """Async wrapper for JSX execution."""
+    """Async JSX execution — tries WebSocket relay first, falls back to subprocess.
+
+    If a CEP panel is connected for the target app via the relay server,
+    this sends the JSX directly over WebSocket (faster, no temp file overhead).
+    On any relay failure, it silently falls back to the original osascript/
+    PowerShell subprocess path.
+    """
+    # Attempt WebSocket relay path if available
+    if _relay is not None and _relay.is_connected(app):
+        try:
+            # Prepare JSX with polyfills (same as subprocess path)
+            prepared_jsx = _prepare_jsx(app, jsx_code)
+            result = await _run_jsx_websocket(app, prepared_jsx, timeout=timeout)
+            if result.get("success"):
+                return result
+            # If relay returned a failure due to connection issues, fall through
+            # to subprocess. If it was a genuine JSX error, return it as-is.
+            stderr = result.get("stderr", "")
+            if "connection" in stderr.lower() or "timeout" in stderr.lower() or "relay" in stderr.lower():
+                logger.debug("Relay execution failed for %s, falling back to subprocess: %s", app, stderr)
+            else:
+                # Genuine JSX execution error — return it, don't retry via subprocess
+                return result
+        except Exception as exc:
+            # Any relay error — silently fall back to subprocess
+            logger.debug("Relay unavailable for %s, falling back to subprocess: %s", app, exc)
+
+    # Subprocess path (original, always available)
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _run_jsx, app, jsx_code, timeout)
 

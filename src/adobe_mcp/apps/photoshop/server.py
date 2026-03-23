@@ -17,8 +17,12 @@ register_photoshop_tools(mcp)
 
 
 def main():
-    """Run the Photoshop-only MCP server (stdio transport)."""
-    mcp.run()
+    """Run the Photoshop-only MCP server with concurrent WebSocket relay."""
+    try:
+        from adobe_mcp.relay.startup import run_with_relay
+        run_with_relay(mcp)
+    except ImportError:
+        mcp.run()
 
 
 if __name__ == "__main__":
